@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.concurrent.CompletableFuture;
+
 @RestController
 @RequestMapping("/api")
 public class OrderController {
@@ -19,18 +21,22 @@ public class OrderController {
     @Autowired
     private AuthUtil authUtil;
 
-    @PostMapping("/order/users/payments/{paymentMethod}")
-    public ResponseEntity<OrderDTO> orderProducts(@PathVariable String paymentMethod, @RequestBody OrderRequestDTO orderRequestDTO) {
+    public CompletableFuture<ResponseEntity<OrderDTO>> orderProducts(
+            @PathVariable String paymentMethod,
+            @RequestBody OrderRequestDTO orderRequestDTO) {
+
         String emailId = authUtil.loggedInEmail();
-        OrderDTO order = orderService.placeOrder(
-                emailId,
-                orderRequestDTO.getAddressId(),
-                paymentMethod,
-                orderRequestDTO.getPgName(),
-                orderRequestDTO.getPgPaymentId(),
-                orderRequestDTO.getPgStatus(),
-                orderRequestDTO.getPgResponseMessage()
-        );
-        return new ResponseEntity<>(order, HttpStatus.CREATED);
+
+        // Call the asynchronous method
+        return orderService.placeOrder(
+                        emailId,
+                        orderRequestDTO.getAddressId(),
+                        paymentMethod,
+                        orderRequestDTO.getPgName(),
+                        orderRequestDTO.getPgPaymentId(),
+                        orderRequestDTO.getPgStatus(),
+                        orderRequestDTO.getPgResponseMessage()
+                ).thenApply(order -> new ResponseEntity<>(order, HttpStatus.CREATED))
+                .exceptionally(ex -> new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR));
     }
 }
